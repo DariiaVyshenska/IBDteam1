@@ -1,0 +1,4 @@
+Dariia:
+- project management
+- git and github workshop
+- running mothur
