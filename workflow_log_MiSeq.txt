@@ -1,0 +1,5 @@
+# primers and barcodes were removed during demultiplexing, therefore the .fastq files do not contain primers and barcodes
+# and are not trimmed in mothur workflow
+# before running SGE_Batch, .fastq files were uncompressed using gunzip
+# running mothur as SGE_Batch:
+SGE_Batch -c 'mothur ibd.batch' -q all.q -r log_dir -P 24 -f 100G -m 100G -F 400G
