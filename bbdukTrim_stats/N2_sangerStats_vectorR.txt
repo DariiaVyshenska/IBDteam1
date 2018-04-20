@@ -1,0 +1,6 @@
+#File	/ACTF/Course/mb599_bds_s18/data/share/group1_Ream/IBDfasta/N2.fasta
+#Total	80
+#Matched	13	16.25000%
+#Name	Reads	ReadsPct
+pCR4_5p	7	8.75000%
+pCR4_3p	6	7.50000%

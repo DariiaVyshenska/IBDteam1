@@ -1,0 +1,6 @@
+#File	/ACTF/Course/mb599_bds_s18/home/feyr/IBDteam1/bbdukTrim/bbdukTrim_out/N28.trimmedRL.fasta
+#Total	51
+#Matched	4	7.84314%
+#Name	Reads	ReadsPct
+907R	3	5.88235%
+8-27F	1	1.96078%

@@ -1,0 +1,4 @@
+#File	/ACTF/Course/mb599_bds_s18/data/share/group1_Ream/IBDfasta/N12.fasta
+#Total	8
+#Matched	0	0.00000%
+#Name	Reads	ReadsPct
