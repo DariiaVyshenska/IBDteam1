@@ -1,0 +1,14 @@
+# nsdl 4.24.18
+
+# Purpose: identify chimeric sequences and eventually remove them
+# Goal: prepare sequences for further analysis
+
+# Step 1: download database for 16S sequences (this is in my personal directory but I will move to shared folder
+# SILVA_132_SSURef_Nr99_tax_silva.fasta
+
+# Step 2: create .txt with uchime commands
+# findChimeraMulti.txt
+
+# Step 3: run uchime to identify these sequences
+SGE_Array -c findChimeraMulti.txt -r uchimeBatch -P 1 -m 4G -b 23
+
