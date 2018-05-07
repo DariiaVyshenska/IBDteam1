@@ -19,3 +19,53 @@ singularity run /local/cluster/singularity-images/qiime2-2017.12.img feature-tab
 singularity run /local/cluster/singularity-images/qiime2-2017.12.img feature-table tabulate-seqs \
   --i-data rep-seqs.qza \
   --o-visualization rep-seqs.qzv
+
+# Generate a tree for phylogenetic diversity analyses
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img alignment mafft \
+  --i-sequences rep-seqs.qza \
+  --o-alignment aligned-rep-seqs.qza
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img alignment mask \
+  --i-alignment aligned-rep-seqs.qza \
+  --o-masked-alignment masked-aligned-rep-seqs.qza
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img phylogeny fasttree \
+  --i-alignment masked-aligned-rep-seqs.qza \
+  --o-tree unrooted-tree.qza
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img phylogeny midpoint-root \
+  --i-tree unrooted-tree.qza \
+  --o-rooted-tree rooted-tree.qza
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img diversity alpha-rarefaction \
+  --i-table table.qza \
+  --i-phylogeny rooted-tree.qza \
+  --p-max-depth 4000 \
+  --m-metadata-file sample-metadata.tsv \
+  --o-visualization alpha-rarefaction.qzv
+
+# Alpha and beta diversity analysis
+# I found the depth 1913 to be the best (I'm loosing one sample - #36, but all curves plateau) - I used table.qzv and shannon rarefaction
+# plot to pinpoint this depth
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img diversity core-metrics-phylogenetic \
+  --i-phylogeny rooted-tree.qza \
+  --i-table table.qza \
+  --p-sampling-depth 1913 \
+  --m-metadata-file sample-metadata.tsv \
+  --output-dir core-metrics-results
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img diversity alpha-group-significance \
+  --i-alpha-diversity core-metrics-results/faith_pd_vector.qza \
+  --m-metadata-file sample-metadata.tsv \
+  --o-visualization core-metrics-results/faith-pd-group-significance.qzv
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img diversity alpha-group-significance \
+  --i-alpha-diversity core-metrics-results/evenness_vector.qza \
+  --m-metadata-file sample-metadata.tsv \
+  --o-visualization core-metrics-results/evenness-group-significance.qzv
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img diversity beta-group-significance \
+  --i-distance-matrix core-metrics-results/unweighted_unifrac_distance_matrix.qza \
+  --m-metadata-file sample-metadata.tsv \
+  --m-metadata-category disease \
+  --o-visualization core-metrics-results/unweighted-unifrac-disease-significance.qzv \
+  --p-pairwise
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img diversity beta-group-significance \
+  --i-distance-matrix core-metrics-results/unweighted_unifrac_distance_matrix.qza \
+  --m-metadata-file sample-metadata.tsv \
+  --m-metadata-category disease_state \
+  --o-visualization core-metrics-results/unweighted-unifrac-disease_state-significance.qzv \
+  --p-pairwise
