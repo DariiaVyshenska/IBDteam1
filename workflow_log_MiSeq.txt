@@ -69,3 +69,17 @@ singularity run /local/cluster/singularity-images/qiime2-2017.12.img diversity b
   --m-metadata-category disease_state \
   --o-visualization core-metrics-results/unweighted-unifrac-disease_state-significance.qzv \
   --p-pairwise
+
+# Taxonomic analysis 
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img feature-classifier classify-sklearn \
+  --i-classifier gg-13-8-99-nb-classifier.qza \
+  --i-reads rep-seqs.qza \
+  --o-classification taxonomy.qza
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img metadata tabulate \
+  --m-input-file taxonomy.qza \
+  --o-visualization taxonomy.qzv
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img taxa barplot \
+  --i-table table.qza \
+  --i-taxonomy taxonomy.qza \
+  --m-metadata-file sample-metadata.tsv \
+  --o-visualization taxa-bar-plots.qzv
