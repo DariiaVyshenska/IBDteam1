@@ -1,7 +1,0 @@
-Dariia:
-- project management
-- git and github workshop
-- running mothur
-Rosalyn:
-- set up and use git and github
-- remove primer and vector sequences from sanger sequencing reads

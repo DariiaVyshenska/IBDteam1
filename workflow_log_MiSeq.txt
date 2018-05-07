@@ -1,5 +1,21 @@
 # primers and barcodes were removed during demultiplexing, therefore the .fastq files do not contain primers and barcodes
-# and are not trimmed in mothur workflow
-# before running SGE_Batch, .fastq files were uncompressed using gunzip
-# running mothur as SGE_Batch:
-SGE_Batch -c 'mothur ibd.batch' -q all.q -r log_dir -P 24 -f 100G -m 100G -F 400G
+#qiime info
+#System versions
+#Python version: 3.5.4
+#QIIME 2 release: 2017.12
+#QIIME 2 version: 2017.12.1
+#q2cli version: 2017.12.0
+
+# importing demultiplexed paired end data
+qiime tools import   --type 'SampleData[PairedEndSequencesWithQuality]'   --input-path import   --source-format CasavaOneEightSingleLanePerSampleDirFmt   --output-path demux-paired-end.qza
+# renaming import file
+mv demux-paired-end.qza demux.qza
+# Sequence quality control and feature table construction with dada2
+SGE_Batch -c 'singularity run /local/cluster/singularity-images/qiime2-2017.12.img dada2 denoise-paired --i-demultiplexed-seqs demux.qza --p-trim-left-f 0 --p-trim-left-r 61 --p-trunc-len-f 228 --p-trunc-len-r 250 --o-table table.qza --o-representative-sequences rep-seqs.qza' -r log_dir -q samwise -P 38 -m 50G -f 500G -F 500G
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img feature-table summarize \
+  --i-table table.qza \
+  --o-visualization table.qzv \
+  --m-sample-metadata-file sample-metadata.tsv
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img feature-table tabulate-seqs \
+  --i-data rep-seqs.qza \
+  --o-visualization rep-seqs.qzv
