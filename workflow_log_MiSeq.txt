@@ -1,0 +1,85 @@
+# primers and barcodes were removed during demultiplexing, therefore the .fastq files do not contain primers and barcodes
+#qiime info
+#System versions
+#Python version: 3.5.4
+#QIIME 2 release: 2017.12
+#QIIME 2 version: 2017.12.1
+#q2cli version: 2017.12.0
+
+# importing demultiplexed paired end data
+qiime tools import   --type 'SampleData[PairedEndSequencesWithQuality]'   --input-path import   --source-format CasavaOneEightSingleLanePerSampleDirFmt   --output-path demux-paired-end.qza
+# renaming import file
+mv demux-paired-end.qza demux.qza
+# Sequence quality control and feature table construction with dada2
+SGE_Batch -c 'singularity run /local/cluster/singularity-images/qiime2-2017.12.img dada2 denoise-paired --i-demultiplexed-seqs demux.qza --p-trim-left-f 0 --p-trim-left-r 61 --p-trunc-len-f 228 --p-trunc-len-r 250 --o-table table.qza --o-representative-sequences rep-seqs.qza' -r log_dir -q samwise -P 38 -m 50G -f 500G -F 500G
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img feature-table summarize \
+  --i-table table.qza \
+  --o-visualization table.qzv \
+  --m-sample-metadata-file sample-metadata.tsv
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img feature-table tabulate-seqs \
+  --i-data rep-seqs.qza \
+  --o-visualization rep-seqs.qzv
+
+# Generate a tree for phylogenetic diversity analyses
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img alignment mafft \
+  --i-sequences rep-seqs.qza \
+  --o-alignment aligned-rep-seqs.qza
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img alignment mask \
+  --i-alignment aligned-rep-seqs.qza \
+  --o-masked-alignment masked-aligned-rep-seqs.qza
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img phylogeny fasttree \
+  --i-alignment masked-aligned-rep-seqs.qza \
+  --o-tree unrooted-tree.qza
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img phylogeny midpoint-root \
+  --i-tree unrooted-tree.qza \
+  --o-rooted-tree rooted-tree.qza
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img diversity alpha-rarefaction \
+  --i-table table.qza \
+  --i-phylogeny rooted-tree.qza \
+  --p-max-depth 4000 \
+  --m-metadata-file sample-metadata.tsv \
+  --o-visualization alpha-rarefaction.qzv
+
+# Alpha and beta diversity analysis
+# I found the depth 1913 to be the best (I'm loosing one sample - #36, but all curves plateau) - I used table.qzv and shannon rarefaction
+# plot to pinpoint this depth
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img diversity core-metrics-phylogenetic \
+  --i-phylogeny rooted-tree.qza \
+  --i-table table.qza \
+  --p-sampling-depth 1913 \
+  --m-metadata-file sample-metadata.tsv \
+  --output-dir core-metrics-results
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img diversity alpha-group-significance \
+  --i-alpha-diversity core-metrics-results/faith_pd_vector.qza \
+  --m-metadata-file sample-metadata.tsv \
+  --o-visualization core-metrics-results/faith-pd-group-significance.qzv
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img diversity alpha-group-significance \
+  --i-alpha-diversity core-metrics-results/evenness_vector.qza \
+  --m-metadata-file sample-metadata.tsv \
+  --o-visualization core-metrics-results/evenness-group-significance.qzv
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img diversity beta-group-significance \
+  --i-distance-matrix core-metrics-results/unweighted_unifrac_distance_matrix.qza \
+  --m-metadata-file sample-metadata.tsv \
+  --m-metadata-category disease \
+  --o-visualization core-metrics-results/unweighted-unifrac-disease-significance.qzv \
+  --p-pairwise
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img diversity beta-group-significance \
+  --i-distance-matrix core-metrics-results/unweighted_unifrac_distance_matrix.qza \
+  --m-metadata-file sample-metadata.tsv \
+  --m-metadata-category disease_state \
+  --o-visualization core-metrics-results/unweighted-unifrac-disease_state-significance.qzv \
+  --p-pairwise
+
+# Taxonomic analysis 
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img feature-classifier classify-sklearn \
+  --i-classifier gg-13-8-99-nb-classifier.qza \
+  --i-reads rep-seqs.qza \
+  --o-classification taxonomy.qza
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img metadata tabulate \
+  --m-input-file taxonomy.qza \
+  --o-visualization taxonomy.qzv
+singularity run /local/cluster/singularity-images/qiime2-2017.12.img taxa barplot \
+  --i-table table.qza \
+  --i-taxonomy taxonomy.qza \
+  --m-metadata-file sample-metadata.tsv \
+  --o-visualization taxa-bar-plots.qzv
