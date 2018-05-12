@@ -1,5 +1,0 @@
-#File	/ACTF/Course/mb599_bds_s18/data/share/group1_Ream/IBDfasta/N3.fasta
-#Total	99
-#Matched	2	2.02020%
-#Name	Reads	ReadsPct
-pCR4_5p	2	2.02020%
