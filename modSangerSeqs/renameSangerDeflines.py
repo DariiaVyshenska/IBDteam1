@@ -50,8 +50,10 @@ def renameFastaDeflines(organismNames,fastaFile):
         # GenBank defline format: Seq1 [organism=Genus species] [other info] description of the sequence
         newID = "Seq" + str(count) + " [organism=" + organismNames[count] + "]" # this variable must be a string
         # change the read ID
+        read.name = ''
+        read.description = ''
         read.id = newID
-#        read = SeqRecord(read, id=newID) # newID variable must be a string in order to assign it as the record id
+        #read = SeqRecord(read, id=newID) # newID variable must be a string in order to assign it as the record id
         readList.append(read)
         count +=1 # update count in preparation for next read
     return readList
