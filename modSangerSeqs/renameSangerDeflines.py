@@ -17,31 +17,48 @@ if len(sys.argv) != 3 or '-h' in sys.argv or '--help' in sys.argv:
 
 # parses blast xml output file
 def parseBlastFile(blastFile):
-    #organismName = re.compile('[;\s]([\D]+)[;\s]') # should get all taxonomic info
+    rec = []
     blastFile = open(blastFile)
     blastRecords = NCBIXML.parse(blastFile) # use parse() for multiple query sequences 
     for blastRecord in blastRecords:
         for alignment in blastRecord.alignments:
-            for hsp in alignment.hsps:
-                line = alignment.title
-                testList = line.strip().split(';')
+            line = alignment.title # assigns the alignment title containing taxonimic info to a variable
+            rec.append(line) # append list of organisms
+            break # only take the first one, break after that
+    return rec
+
+def extractNames(recs, regex):
+    i = 0
+    names = []
+    for rec in recs:
+        if regex.search(rec) != None:
+            names.append(regex.search(rec).group(0))
+        else:
+            print("Genus not known", i)
+        i += 1
+    return names
 
 # this subroutine renames the defline IDs in the fasta file
-def renameFastaDeflines(fastaFile):
+def renameFastaDeflines(organismNames,fastaFile):
+    readList = []
     # set variable count to zero
     count = 0
     # store each read's defline ID and sequence in SeqIO object 'fastaReads'
     fastaReads = SeqIO.parse(fastaFile,'fasta') # specify file name (fastaFile) and file type ('fasta')
     # for each read in the object fastaReads
     for read in fastaReads:
-        # add one to count for each read in order to get unique number for each read
-        count += 1
         # GenBank defline format: Seq1 [organism=Genus species] [other info] description of the sequence
-        newID = "Seq" + str(count) + " [organism=" + organismName + "]" # this variable must be a string
-        print read.id 
+        newID = "Seq" + str(count) + " [organism=" + organismNames[count] + "]" # this variable must be a string
         # change the read ID
-        read = SeqRecord(read, id=newID) # newID variable must be a string in order to assign it as the record id
-        print read.id
+        read.id = newID
+#        read = SeqRecord(read, id=newID) # newID variable must be a string in order to assign it as the record id
+        readList.append(read)
+        count +=1 # update count in preparation for next read
+    return readList
+
+def writeNewFasta(reads,outFile):
+    with open(outFile, 'w') as outFile:
+        SeqIO.write(reads,outFile,"fasta")
 
 # ARGUMENTS and MAIN
 
@@ -49,6 +66,16 @@ def renameFastaDeflines(fastaFile):
 fastaFile = sys.argv[1]
 blastFile = sys.argv[2]
 
+fastaFile_noPath = fastaFile.split('/')[-1]
+fastaBase = fastaFile_noPath.split('.')[0]
+print fastaBase
+outFile = str(fastaBase) + '_newDeflines.fasta'
+print outFile
+
+regex = re.compile("[0-9a-zA-Z ]*;[0-9a-zA-Z -]*;[0-9a-zA-Z ._-]*$")
+
 # call this subroutine, above
-parseBlastFile(blastFile)
-renameFastaDeflines(fastaFile)
+rec = parseBlastFile(blastFile)
+names = extractNames(rec,regex) 
+reads = renameFastaDeflines(names,fastaFile)
+writeNewFasta(reads,outFile)
