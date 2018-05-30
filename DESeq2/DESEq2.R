@@ -1,18 +1,17 @@
 # DESeq2 Analysis of Gastric Microbiota of IBD Patients
 
 ###
-
-setwd ("1. Spring 2018/1. MCB 599 Prob Solving BLDS/DESeq2/")
+#setwd ("1. Spring 2018/1. MCB 599 Prob Solving BLDS/DESeq2/")
 
 # bioconductor R install
-source("https://bioconductor.org/biocLite.R")
+#source("https://bioconductor.org/biocLite.R")
 
 # biocLite()
-biocLite("phyloseq")
-biocLite("metagenomeSeq")
-biocLite("DESeq2")
-biocLite("bit")
-
+#biocLite("phyloseq")
+#biocLite("metagenomeSeq")
+#biocLite("DESeq2")
+#biocLite("bit")
+#install.packages("pheatmap")
 
 require (DESeq2)
 require(phyloseq)
@@ -21,7 +20,8 @@ library(ape)
 require(vegan)
 library (ggplot2)
 library(devtools)  # Load the devtools package
-
+library(reshape2)
+library ("pheatmap")
 
 ####
 # Files
@@ -96,7 +96,7 @@ deSeqNorm <- function(ps){
   ps_deSeq <- phyloseq(otu_table(abund, taxa_are_rows = T), sample_data(ps), tax_table(ps))
   return(ps_deSeq)
 }
-norm_DeSeq_ps<-deSeqNorm(phylo_object)
+norm_DeSeq_ps_sup5000<-deSeqNorm(phylo_object_sup5000)
 plot_bar(norm_DeSeq_ps, fill = "Class")
 
 #this function runs normalization and DESeq2 
@@ -135,6 +135,23 @@ deseq_res1<-runDESeq1(phylo_object)
 deseq_res1
 write.csv(deseq_res1, file="deseq_res1.csv")
 
+# looking at crohns versus non disease
+runDESeq_pvalue <- function(ps){
+  diagdds = phyloseq_to_deseq2(ps, ~ disease_state) 
+  diagdds <- estimateSizeFactors(diagdds, type = "poscounts")
+  diagdds <- DESeq(diagdds,fitType="parametric", betaPrior = FALSE) 
+  res = results(diagdds, contrast = c("disease_state", "C", "N"))
+  res$padj[is.na(res$padj)] = 1
+  sig <- res[res$padj <.1,]
+  sigtab <- data.frame(cbind(sig, tax_table(ps)[rownames(sig), ]))
+  return(sigtab)
+}
+
+deseq_res2<-runDESeq_pvalue(phylo_object_sup5000)
+deseq_res2
+write.csv(deseq_res1, file="deseq_res1.csv")
+
+
 # looking at UC versus non disease
 runDESeq2 <- function(ps){
   diagdds = phyloseq_to_deseq2(ps, ~ disease_state) 
@@ -150,6 +167,23 @@ runDESeq2 <- function(ps){
 deseq_res2<-runDESeq2(phylo_object)
 deseq_res2
 write.csv(deseq_res2, file="deseq_res2.csv")
+
+# looking at UC versus non disease
+runDESeq3 <- function(ps){
+  diagdds = phyloseq_to_deseq2(ps, ~ disease_state) 
+  diagdds <- estimateSizeFactors(diagdds, type = "poscounts")
+  diagdds <- DESeq(diagdds,fitType="parametric", betaPrior = FALSE) 
+  res = results(diagdds, contrast = c("disease_state", "C", "U"))
+  res$padj[is.na(res$padj)] = 1
+  sig <- res[res$padj <.05,]
+  sigtab <- data.frame(cbind(sig, tax_table(ps)[rownames(sig), ]))
+  return(sigtab)
+}
+
+deseq_res3<-runDESeq3(phylo_object)
+deseq_res3
+write.csv(deseq_res3, file="deseq_res3.csv")
+
 
 # looking at male versus female
 runbysex <- function(ps){
@@ -167,14 +201,10 @@ bysex_res<-runbysex(phylo_object)
 bysex_res
 write.csv(bysex_res, file="bysex_res.csv")
 
-
-#plot ggplot 2 
-#plot the significant data with box plot?
-
 #code final https://github.com/walllab/ASD_microbiome16s_public/blob/master/ASD_microbiome_final.R
 
-
 plot_bar(phylo_object, fill = "Class")
+plot_bar(phylo_object_sup5000, fill = "Class")
 
 #remove the very shallow samples 
 sort(colSums(features)) #=> remove any sample under 5000 reads L2S385 L2S380 L2S384
@@ -187,9 +217,18 @@ deseq_res_sup5000<-runDESeq(phylo_object_sup5000)
 deseq_res_sup5000
 write.csv(deseq_res_sup5000, file="deseq_res_sup5000")
 
-bysex_res_sup5000<-runbysex(phylo_object_sup5000)
-bysex_res_sup5000
-write.csv(bysex_res_sup5000, file="bysex_res_sup5000.csv")
+deseq_res_sup5000_cd<-runDESeq1(phylo_object_sup5000)
+deseq_res_sup5000_cd
+write.csv(deseq_res_sup5000_cd, file="deseq_res_sup5000_cd.csv")
+
+deseq_res_sup5000_uc<-runDESeq2(phylo_object_sup5000)
+deseq_res_sup5000_uc
+write.csv(deseq_res_sup5000_uc, file="deseq_res_sup5000_uc.csv")
+
+deseq_res3<-runDESeq3(phylo_object_sup5000)
+deseq_res3
+write.csv(deseq_res3, file="deseq_res_sup5000_cd_uc.csv")
+
 
 
 #if you want you can Filter the taxa by prevalence 
@@ -229,11 +268,40 @@ make_boxplots <- function(rsv_table, grouping, pvals, title = "", xlab = "", yla
   print(p)
 }
 
-make_boxplots(t(otu_table(features,taxa_are_rows = TRUE)[rownames(deseq_res), ]), sample_data(metada)$disease, paste(deseq_res$Family, deseq_res$Genus, deseq_res$Species), deseq_res$padj)
+
+deseq_box_sup<- make_boxplots(t(otu_table(features,taxa_are_rows = TRUE)[rownames(deseq_res_sup5000), ]), 
+              sample_data(metada)$disease, paste(deseq_res_sup5000$Genus, deseq_res_sup5000$Species), 
+               "Differential Abundance between IBD and Controls, by Features")
 make_boxplots(t(otu_table(features,taxa_are_rows = TRUE)[rownames(deseq_res), ]), sample_data(metada)$disease_state, paste(deseq_res$Family, deseq_res$Genus, deseq_res$Species), deseq_res$padj)
-make_boxplots(t(otu_table(features,taxa_are_rows = TRUE)[rownames(bysex_res), ]), sample_data(metada)$sex, paste(bysex_res$Family, bysex_res$Genus, bysex_res$Species), bysex_res$padj)
-make_boxplots(t(otu_table(features,taxa_are_rows = TRUE)[rownames(bysex_res), ]), sample_data(metada)$sex, paste(bysex_res$Family, bysex_res$Genus, bysex_res$Species), bysex_res$padj)
+
+deseq_box_sup_cd<- make_boxplots(t(otu_table(features,taxa_are_rows = TRUE)[colnames(deseq_res_sup5000_cd), ]), 
+                              sample_data(metada)$disease_state, deseq_res_sup5000_cd$padj)
 
 
-#the page to play with the plotting 
-potential_confounding_factor<-c("disease", "disease_state","sex", "IBD_degree", "gastric_bx", "nausea" , "dysphagia" , "reflux" , "GERD" , "reflux_GERD" , "dyspepsia" , "hematochezia" , "Barretts" , "esophageal_stricture" , "diarrhea" , "abdominal_pain" , "abdom_RUQ_epigastric_pain")
+#extract the significant features and the counts for each sample
+#cd versus control
+# otu_abundance <- otu_table(norm_DeSeq_ps)
+# otu_abundance <- as.data.frame(otu_abundance)
+# otu_abundance <- otu_abundance[row.names(otu_abundance) %in% row.names(deseq_res_sup5000_cd),]
+# library(plot3D)
+# par(mar = c(7,3,2,3))
+# incol = jet.col(100)
+# image2D(as.matrix(otu_abundance), col = incol, xaxt = 'n', yaxt = 'n', ylab = '', xlab = '')
+# axis(2,at = seq(0,1,1/37),labels = colnames(otu_abundance), cex.axis = 0.5, las = 1)
+# axis(1, at = seq(0,1,0.5), labels = deseq_res_sup5000_cd$Genus, cex.axis = 0.75, las = 2)
+
+dev.off()
+#extract the significant features and the counts for each sample
+#IBD versus control
+otu_abundance <- otu_table(norm_DeSeq_ps_sup5000)
+otu_abundance <- as.data.frame(otu_abundance)
+otu_abundance <- otu_abundance[row.names(otu_abundance) %in% row.names(deseq_res_sup5000),]
+par(mar = c(7,3,2,3))
+incol = jet.col(100)
+image2D(as.matrix(otu_abundance), col = incol, xaxt = 'n', yaxt = 'n', ylab = '', xlab = '')
+axis(2,at = seq(0,1,1/34),labels = colnames(otu_abundance), cex.axis = 0.5, las = 1)
+axis(1, at = seq(0,1,1), labels = deseq_res_sup5000$Genus, cex.axis = 0.75, las = 2)
+mtext('Control', side = 2, line = 1.5, adj = 1)
+mtext('CD', side = 2, line = 1.5, adj = 0)
+par(xpd=TRUE,oma=c(0,0,0,6.15))
+abline(h = 15.5/34, lwd = 3)
