@@ -83,15 +83,15 @@ res_fit$Min_sample<-Min_effec_samp
 # Only pull out those features which have enough samples to be an effective measure
 res_fit<-res_fit[res_fit$`+samples in group 0` >= Min_effec_samp & res_fit$`+samples in group 1` >= Min_effec_samp,]
 # Return that object
-return(res_fit)
+res_fit
 # Return an object that shows which samples and taxon the differentially expressed features come from
 library(plot3D)
 # Set colors for heatmap
-incol = c(jet.col(100))
+incol = c(NA,jet.col(100))
 # Pull out the predicted identities of the features of interest
 taxons = taxaIBD[taxaIBD$Feature.ID %in% rownames(res_fit),]
 # Creat the object that will turn into a heat map.
-heater <- IBD$counts[row.names(IBD$counts) %in% taxons$Feature.ID,]
+heater <- fit1$counts[row.names(fit1$counts) %in% taxons$Feature.ID,]
 # Set the rownames to be the taxa instead of the feature
 row.names(heater) = c("Veillonella dispar", "Prevotella melaninogenica 1", "Prevotella melaninogenica 2", "Streptococcus", "Prevotella", "Veillonella parvula", "Prevotella nigrescens")
 #adjust the order to make sure they are grouped together
@@ -99,12 +99,16 @@ ord2 = match(row.names(clinIBD), colnames(heater))
 
 dev.off()
 # Set correct margins
-par(mar = c(7,3,2,5))
+par(mar = c(7,3,2,2))
 # Use the image2D function from plot3D package to make a heat map
 image2D(as.matrix(log10(heater+1)), yaxt = 'n', xaxt = 'n', xlab = '', ylab = '')
 # Set the axis names to match the patient numbers and the predicted IDs
-axis(2,at = seq(0,1,1/37),labels = colnames(heater), cex.axis = 0.5, las = 1)
+axis(2,at = seq(0,1,1/32),labels = colnames(heater), cex.axis = 0.5, las = 1)
 axis(1, at = seq(0,1,1/6), labels = rownames(heater), cex.axis = 0.5, las = 2)
 #heatmap(log10(as.matrix(heater+1)),col = incol, Rowv = NA, Colv = NA, cexRow = 0.75)
 #which(as.matrix(heater)==0)
+mtext("Control", side = 2, line = 1.5, adj = 1)
+mtext("CD", side = 2, line = 1.5, adj = 0)
+par(xpd=TRUE,oma=c(0,0,0,4)) 
+abline(h = 15.5/32, lwd = 3)
 
