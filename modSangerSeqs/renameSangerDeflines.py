@@ -33,7 +33,7 @@ def extractNames(recs, regex):
         if regex.search(rec) != None:
             names.append(regex.search(rec).group(0))
         else:
-            print("Genus not known", i)
+            names.append("Genus not known")
         i += 1
     return names
 
@@ -71,7 +71,7 @@ fastaFile_noPath = fastaFile.split('/')[-1]
 fastaBase = fastaFile_noPath.split('.')[0]
 outFile = str(fastaBase) + '_formatted.fasta'
 
-regex = re.compile("[0-9a-zA-Z ]*;[0-9a-zA-Z -]*;[0-9a-zA-Z ._-]*$")
+regex = re.compile("[0-9a-zA-Z ]*;[0-9a-zA-Z -]*;[0-9a-zA-Z= ._-]*$")
 
 # call this subroutine, above
 rec = parseBlastFile(blastFile)
