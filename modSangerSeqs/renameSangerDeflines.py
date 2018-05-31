@@ -1,9 +1,8 @@
 # rmf 5.17.2018
-
+#!/local/cluster/bin/python
 import sys, os  # for reading in files and running usage statement
 import re  # for regular expressions, used to get taxonomic info out of BLAST files
-# the following imports are for using various parts of the biopython package
-from Bio import SeqIO  
+from Bio import SeqIO # the following imports are for using various parts of the biopython package
 from Bio.Blast import NCBIXML
 from Bio.SeqRecord import SeqRecord
 
@@ -70,9 +69,7 @@ blastFile = sys.argv[2]
 
 fastaFile_noPath = fastaFile.split('/')[-1]
 fastaBase = fastaFile_noPath.split('.')[0]
-print fastaBase
-outFile = str(fastaBase) + '_newDeflines.fasta'
-print outFile
+outFile = str(fastaBase) + '_formatted.fasta'
 
 regex = re.compile("[0-9a-zA-Z ]*;[0-9a-zA-Z -]*;[0-9a-zA-Z ._-]*$")
 
