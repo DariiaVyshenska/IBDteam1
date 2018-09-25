@@ -16,14 +16,19 @@ if len(sys.argv) != 3 or '-h' in sys.argv or '--help' in sys.argv:
 
 # parses blast xml output file
 def parseBlastFile(blastFile):
+    count = 0
     rec = []
     blastFile = open(blastFile)
     blastRecords = NCBIXML.parse(blastFile) # use parse() for multiple query sequences 
     for blastRecord in blastRecords:
-        for alignment in blastRecord.alignments:
-            line = alignment.title # assigns the alignment title containing taxonimic info to a variable
-            rec.append(line) # append list of organisms
-            break # only take the first one, break after that
+        if len(blastRecord.alignments) == 0:
+            line = 'Genus not known'
+        else:
+            for alignment in blastRecord.alignments:
+                line = alignment.title # assigns the alignment title containing taxonimic info to a variable
+                break # only take the first one, break after that
+        print line
+        rec.append(line) # append list of organisms
     return rec
 
 def extractNames(recs, regex):
