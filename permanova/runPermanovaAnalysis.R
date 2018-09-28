@@ -13,7 +13,7 @@ require(vegan)
 #setwd("/Users/rmf/Documents/classes/2018.04.spring/MCB.599.Collaborative.Problem.Solving/MB_599_permanova")
 
 ## feature table data wrangling
-#I need to edit the feature table: remove the first line with a # + remove the '#' of the second line
+# remove the first line with a # + remove the '#' of the second line
 features<-read.table("feature_table.txt", row.names = 1, stringsAsFactors = F)
 colnames(features)<-features[1,]
 features<-features[-1,]
@@ -52,7 +52,7 @@ colnames(metada)<-metada[1,]
 metada<-metada[-1,]
 rownames(metada)<-metada[,1]
 metada<-metada[,-1]
-#metada<-as.factor(metada): sometimes weird things happen and you need factors
+#metada<-as.factors(metada) # sometimes weird things happen and you need factors
 
 # combine all 3 tables into a phyloseq object 
 # official tutorial https://joey711.github.io/phyloseq/import-data.html
@@ -105,28 +105,40 @@ for (i in 2:length(metada)){
   cat (i,"\t")
   tmp_map<-metada[,i]
   tmp_map_factors<-as.factor(tmp_map)
-  if (length(levels(tmp_map_factors)) > 1)
-    {tmp_map<-as.data.frame(tmp_map)
-    row.names(tmp_map)<-row.names(metada)
-    ps.tmp<-phylo_object_sup5000_min0.03
-    sample_data(ps.tmp) <- tmp_map
-    as.data.frame(sample_data(ps.tmp))
-
-    tmp_nb_samples<-dim(otu_table(ps.tmp))[2]
-    OTU_tables_bray <- phyloseq::distance(ps.tmp, method = "bray")
-    df_metada <- data.frame(sample_data(ps.tmp ))
+  tmp_map<-as.data.frame(tmp_map)
+  row.names(tmp_map)<-row.names(metada)
+  ps.tmp<-phylo_object_sup5000_min0.03
+  sample_data(ps.tmp) <- tmp_map
+  as.data.frame(sample_data(ps.tmp))
+  
+  tmp_nb_samples<-dim(otu_table(ps.tmp))[2]
+  OTU_tables_bray <- phyloseq::distance(ps.tmp, method = "bray")
+  df_metada <- data.frame(sample_data(ps.tmp ))
+  if (length(levels(df_metada$tmp_map)) > 1)
+    {
+    # commenting out: checking for levels earlier
+    # tmp_map<-as.data.frame(tmp_map)
+    # row.names(tmp_map)<-row.names(metada)
+    # ps.tmp<-phylo_object_sup5000_min0.03
+    # sample_data(ps.tmp) <- tmp_map
+    # as.data.frame(sample_data(ps.tmp))
+    # 
+    # tmp_nb_samples<-dim(otu_table(ps.tmp))[2]
+    # OTU_tables_bray <- phyloseq::distance(ps.tmp, method = "bray")
+    # df_metada <- data.frame(sample_data(ps.tmp ))
     colnames(df_metada)<-colnames(metada)[i]
     form1<-as.formula(paste("OTU_tables_bray",colnames(metada)[i],sep="~"))
-    tmp<-adonis(form1, data = df_metada, permutations = 9999) #adonis test read about it
+    tmp<-adonis(form1, data = df_metada, permutations = 9999) 
     tmp<-tmp$aov.tab$`Pr(>F)`[1]}
-  else {tmp<-2} # assign 2 as pvalue (not possible, but will use for filtering later)
+  else {tmp<-2} # assign 2 as pvalue (not possible, but will use for filtering out ones with only one factor later)
     pval_factors<-c(pval_factors,tmp)
     } 
 
-# remove patient ID (no associated pval) and all factor names associated with factors with level <= 1
+# filtering on number of factors
+# remove patient ID (no associated pval) and all factor names associated with pvals more than 1
 names_pval_factors<-colnames(metada[2:length(metada)])[pval_factors<=1] # view to see which names to remove later
 # remove all factors with level <= 1 (removes all pvalues with values greater than 1 (See above))
-pval_factors<-pval_factors[pval_factors<=1] 
+pval_factors<-pval_factors[pval_factors<=1]  # if less than or = 1 keep it
 
 # calculate FDR-adjusted pvalue
 names_pval_factors<-p.adjust(pval_factors, method="fdr")
