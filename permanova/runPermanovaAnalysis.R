@@ -9,28 +9,29 @@ require(metagenomeSeq)
 library(ape)
 require(vegan)
 
-#getwd()
-#setwd("/Users/rmf/Documents/classes/2018.04.spring/MCB.599.Collaborative.Problem.Solving/MB_599_permanova")
-
-## feature table data wrangling
+# feature table data wrangling
 # remove the first line with a # + remove the '#' of the second line
-features<-read.table("feature_table.txt", row.names = 1, stringsAsFactors = F)
-colnames(features)<-features[1,]
-features<-features[-1,]
-# change from characters => numbers 
+# feature table is OTUs and their counts for each patient
+features<-read.table("permanova/feature_table.txt", row.names = 1, stringsAsFactors = F)
+colnames(features)<-features[1,] # column names are first row
+features<-features[-1,] # remove that row after setting it to column names
+
+# change from characters to numbers 
 features_tmp<-apply(features, 2, function(x) x<-as.numeric(x))
 rownames(features_tmp)<-rownames(features)
 features<-features_tmp
 features<-as.matrix(features)
 
 # taxonomy table data wrangling
-#I need to fix the import of the taxo file
-taxonomy<-read.csv("feature-taxonomy-table.csv", stringsAsFactors = F, row.names = 1)
-#Need to split the string using ;
-#apply: 1 is row and 2 is column
+# taxonomy table has each OTU definition
+taxonomy<-read.csv("permanova/feature-taxonomy-table.csv", stringsAsFactors = F, row.names = 1)
+
+# Need to split the string using ;
+# apply: 1 is row and 2 is column
+# getting each level of taxonomy
 taxo_fixed_lines<-apply(taxonomy, 1, function(line_of_dataframe) strsplit(line_of_dataframe,";"))
 
-final_taxo<-matrix(ncol=10,nrow=length(taxo_fixed_lines))
+final_taxo<-matrix(ncol=7,nrow=length(taxo_fixed_lines))
 final_taxo<-as.data.frame(final_taxo)
 rownames(final_taxo)<-rownames(taxonomy)
 colnames(final_taxo)<-1:length(colnames(final_taxo))
@@ -40,14 +41,14 @@ for (i in 1:length(taxo_fixed_lines)){
     final_taxo[i,][j]<-taxo_fixed_lines[[i]][[1]][j]
     }
 }
-final_taxo<-final_taxo[,-c(8,9,10)]
+
 colnames(final_taxo)<-c("Domain", "Phylum", "Class", "Order", "Family", "Genus", "Species")
 
 final_taxo<-as.matrix(final_taxo)
 
 # metadata table data wrangling
-#metada from qiime, can be edited by adding columns 
-metada<-read.table("2018.9.27_sample-metadata_allFactors.txt",stringsAsFactors = F )
+# metadata table from qiime, can be edited by adding columns 
+metada<-read.table("permanova/2018.9.27_sample-metadata_allFactors.txt",stringsAsFactors = F )
 colnames(metada)<-metada[1,]
 metada<-metada[-1,]
 rownames(metada)<-metada[,1]
@@ -71,9 +72,9 @@ phylo_object_sup5000<-prune_samples(sample_sums(phylo_object_above100K)>=5000, p
 CSS_norm<-function(ps){
   library(metagenomeSeq)
   ps.metaG<-phyloseq_to_metagenomeSeq(ps)
-  p_stat = cumNormStatFast(ps.metaG)
+  p_stat = cumNormStatFast(ps.metaG) # use this stat to trim data
   ps.metaG = cumNorm(ps.metaG, p = p_stat)
-  ps.metaG.norm <- MRcounts(ps.metaG, norm = T)
+  ps.metaG.norm <- MRcounts(ps.metaG, norm = T) # this does normalization
   ps_CSS<-phyloseq(otu_table(ps.metaG.norm, taxa_are_rows = T), sample_data(ps),tax_table(ps))
   return(ps_CSS)
 }
@@ -81,11 +82,6 @@ CSS_norm<-function(ps){
 # call CSS data normalization function
 CSS_norm_ps_sup5000<-CSS_norm(phylo_object_sup5000)
 plot_bar(CSS_norm_ps_sup5000, fill = "Class")
-
-# create csv table for Dariia (for what??)
-CSS_norm_ps_sup5000_table<-otu_table(CSS_norm_ps_sup5000)
-CSS_norm_ps_sup5000_dataFrame<-as.data.frame(CSS_norm_ps_sup5000_table)
-write.csv(CSS_norm_ps_sup5000_dataFrame, "CSS_norm_ps_sup5000_dataFrame.CSV",row.names = F)
 
 # data filtering function (filter on prevalence of taxa in samples)
 filterTaxaByPrevolence <- function(ps, percentSamplesPresentIn){
@@ -96,7 +92,7 @@ filterTaxaByPrevolence <- function(ps, percentSamplesPresentIn){
 }
 
 # call data filtering function (keeps only taxa present in 3% of samples or more)
-# should remove taxa not present in more than 1 patient for this dataset
+# should remove taxa not present in more than 1 patient for this dataset (at least 2 patients)
 phylo_object_sup5000_min0.03<-filterTaxaByPrevolence(phylo_object_sup5000, 0.03)
 
 # PERMANOVA TEST: are there any confounding factors 
@@ -108,7 +104,7 @@ for (i in 2:length(metada)){
   tmp_map<-as.data.frame(tmp_map)
   row.names(tmp_map)<-row.names(metada)
   ps.tmp<-phylo_object_sup5000_min0.03
-  sample_data(ps.tmp) <- tmp_map
+  sample_data(ps.tmp) <- tmp_map # make into special phyloseq object dataframe
   as.data.frame(sample_data(ps.tmp))
   
   tmp_nb_samples<-dim(otu_table(ps.tmp))[2]
@@ -129,19 +125,20 @@ for (i in 2:length(metada)){
     colnames(df_metada)<-colnames(metada)[i]
     form1<-as.formula(paste("OTU_tables_bray",colnames(metada)[i],sep="~"))
     tmp<-adonis(form1, data = df_metada, permutations = 9999) 
-    tmp<-tmp$aov.tab$`Pr(>F)`[1]}
-  else {tmp<-2} # assign 2 as pvalue (not possible, but will use for filtering out ones with only one factor later)
+    tmp<-tmp$aov.tab$`Pr(>F)`[1]
+    }
+  else {tmp<-2} # assign 2 as pvalue if only one factor to use for filtering later
     pval_factors<-c(pval_factors,tmp)
-    } 
+} 
 
 # filtering on number of factors
-# remove patient ID (no associated pval) and all factor names associated with pvals more than 1
-names_pval_factors<-colnames(metada[2:length(metada)])[pval_factors<=1] # view to see which names to remove later
 # remove all factors with level <= 1 (removes all pvalues with values greater than 1 (See above))
-pval_factors<-pval_factors[pval_factors<=1]  # if less than or = 1 keep it
+# remove patient ID (no associated pval) and all factor names associated with pvals more than 1
+names_pval_factors<-colnames(metada[2:length(metada)])[pval_factors<=1]
+names_pval_factors <- as.data.frame(names_pval_factors)
+# calculate FDR-adjusted pvalue and filter on pval > 1
+names_pval_factors$p.val<-p.adjust(pval_factors[pval_factors<=1], method="fdr")
 
-# calculate FDR-adjusted pvalue
-names_pval_factors<-p.adjust(pval_factors, method="fdr")
 
 # function to plot pcoa
 ps_pcoa <- ordinate(
