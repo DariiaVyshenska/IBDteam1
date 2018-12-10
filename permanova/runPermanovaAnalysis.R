@@ -14,7 +14,7 @@ require(vegan)
 
 ## feature table data wrangling
 # remove the first line with a # + remove the '#' of the second line
-features<-read.table("feature_table.txt", row.names = 1, stringsAsFactors = F)
+features<-read.table("permanova/feature_table.txt", row.names = 1, stringsAsFactors = F)
 colnames(features)<-features[1,]
 features<-features[-1,]
 # change from characters => numbers 
@@ -25,12 +25,12 @@ features<-as.matrix(features)
 
 # taxonomy table data wrangling
 #I need to fix the import of the taxo file
-taxonomy<-read.csv("feature-taxonomy-table.csv", stringsAsFactors = F, row.names = 1)
+taxonomy<-read.csv("permanova/feature-taxonomy-table.csv", stringsAsFactors = F, row.names = 1)
 #Need to split the string using ;
 #apply: 1 is row and 2 is column
 taxo_fixed_lines<-apply(taxonomy, 1, function(line_of_dataframe) strsplit(line_of_dataframe,";"))
 
-final_taxo<-matrix(ncol=10,nrow=length(taxo_fixed_lines))
+final_taxo<-matrix(ncol=7,nrow=length(taxo_fixed_lines))
 final_taxo<-as.data.frame(final_taxo)
 rownames(final_taxo)<-rownames(taxonomy)
 colnames(final_taxo)<-1:length(colnames(final_taxo))
@@ -40,14 +40,14 @@ for (i in 1:length(taxo_fixed_lines)){
     final_taxo[i,][j]<-taxo_fixed_lines[[i]][[1]][j]
     }
 }
-final_taxo<-final_taxo[,-c(8,9,10)]
+
 colnames(final_taxo)<-c("Domain", "Phylum", "Class", "Order", "Family", "Genus", "Species")
 
 final_taxo<-as.matrix(final_taxo)
 
 # metadata table data wrangling
 #metada from qiime, can be edited by adding columns 
-metada<-read.table("2018.9.27_sample-metadata_allFactors.txt",stringsAsFactors = F )
+metada<-read.table("permanova/2018.9.27_sample-metadata_allFactors.txt",stringsAsFactors = F )
 colnames(metada)<-metada[1,]
 metada<-metada[-1,]
 rownames(metada)<-metada[,1]
@@ -129,19 +129,19 @@ for (i in 2:length(metada)){
     colnames(df_metada)<-colnames(metada)[i]
     form1<-as.formula(paste("OTU_tables_bray",colnames(metada)[i],sep="~"))
     tmp<-adonis(form1, data = df_metada, permutations = 9999) 
-    tmp<-tmp$aov.tab$`Pr(>F)`[1]}
+    tmp<-tmp$aov.tab$`Pr(>F)`[1]
+    }
   else {tmp<-2} # assign 2 as pvalue (not possible, but will use for filtering out ones with only one factor later)
     pval_factors<-c(pval_factors,tmp)
     } 
-
 # filtering on number of factors
 # remove patient ID (no associated pval) and all factor names associated with pvals more than 1
-names_pval_factors<-colnames(metada[2:length(metada)])[pval_factors<=1] # view to see which names to remove later
+names_pval_factors<-colnames(metada[2:length(metada)])[pval_factors<=1]
+names_pval_factors <- as.data.frame(names_pval_factors)
 # remove all factors with level <= 1 (removes all pvalues with values greater than 1 (See above))
-pval_factors<-pval_factors[pval_factors<=1]  # if less than or = 1 keep it
-
 # calculate FDR-adjusted pvalue
-names_pval_factors<-p.adjust(pval_factors, method="fdr")
+names_pval_factors$p.val<-p.adjust(pval_factors[pval_factors<=1], method="fdr")
+
 
 # function to plot pcoa
 ps_pcoa <- ordinate(
